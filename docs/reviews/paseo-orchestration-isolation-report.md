@@ -28,6 +28,8 @@ Paseo：`0.4.0`
 
 GATE-2 不通过。Paseo 的 runtime mechanics 已可用，但 orchestration control plane 仍有多条可达路径，且本次没有技术证据证明 ACP/MCP/native/CLI/terminal/schedule/subagent 旁路都被 MAGI 关闭或纳入治理。
 
+MAGI 侧已新增 `src/orchestration/gate2-guard.ts`，以 deny-by-default 方式只放行专用 Codex `auto-review` workspace 的 Agent lifecycle mechanics，并拒绝上述绕行路由。该 Guard 的 12 个测试已通过，但它只保护经过 MAGI 的调用，不能限制用户或被攻破的 Paseo daemon 直接调用外部控制面，因此不改变本 Gate 的 NO-GO 判定。
+
 因此：
 
 - 不得把 Paseo Agent completion 当作 MAGI Task completion；
@@ -36,7 +38,8 @@ GATE-2 不通过。Paseo 的 runtime mechanics 已可用，但 orchestration con
 - P0-4 Normalizer 和后续 Codex 垂直切片可以继续作为研究工作，但 P0 GO 仍被 GATE-2 阻断；
 - 需要专用 daemon/config/session/workspace root、MCP 注入关闭验证、ACP/native/terminal/schedule/subagent 的权限继承测试，以及 MAGI 侧 deny-by-default 证据，才能重新评估。
 
+实现细节与通过条件见：[GATE-2 Containment Plan](./gate2-containment-plan.md)。
+
 ## 残余风险声明
 
 Git worktree、loopback listener、dedicated daemon 和 observer-only 只能降低风险，不等于 OS/kernel 级隔离。P0 ControlledExecutor 不是完整 sandbox；验证仍可能执行不可信测试代码；Paseo daemon 被完全攻破时，P0 不承诺抵抗能力。
-
