@@ -2,7 +2,7 @@
 
 日期：2026-08-25  
 分支：`v0.2-p`  
-状态：`FIXTURE SET PASS / STABILITY METRICS PENDING`
+状态：`FORMAT STABILITY PARTIAL / SEMANTIC GATE PENDING`
 
 ## Provider availability
 
@@ -29,12 +29,26 @@ Hermes 已配置到 Paseo，diagnostic 显示 ACP spawn、initialize、session/n
 
 Provider fixture 集合已达到 Codex、Pi、OpenCode、Hermes 四个真实来源；Normalizer 对 inline JSON 和 fenced JSON 两种容器形态均可做严格 schema 提取。P0-5 的“来源可用”子项通过，但稳定性指标仍未完成，不能宣称完整 Gate 通过。
 
+## 多 Provider 稳定性轮次（2026-08-25）
+
+测试在 Paseo 专用 workspace 中执行，每轮明确禁止 tools、shell、network、credentials 和文件修改；输出仅作为 untrusted observation，不是证据。三轮分别覆盖 prose + fenced JSON、prose + inline JSON、prose + fenced JSON（非空 risks/proposedActions）。
+
+| Provider | 轮次 | 完成 | 严格结构可归一化 | 拒绝/超时 | 结果 |
+|---|---:|---:|---:|---:|---|
+| Codex | 3 | 2 | 2 | 0 / 1 | 需关注响应延迟 |
+| Pi | 3 | 3 | 3 | 0 / 0 | 格式通过 |
+| OpenCode | 3 | 3 | 2 | 1 / 0 | 正确拒绝 `risks` 为字符串的 schema 违规输出 |
+| Hermes | 3 | 3 | 3 | 0 / 0 | 格式通过 |
+| 合计 | 12 | 11 | 10 | 1 / 1 | 不能作为完整 Gate 放行 |
+
+本轮稳定性结论是“格式行为部分通过”：Pi、Hermes 三轮均完成并通过；OpenCode 的一次错误类型被严格拒绝，说明 schema 边界生效；Codex 第三轮在等待窗口内没有产生 assistant 输出，记录为超时/无输出。该测试没有验证 claims/evidence 的真实性，也没有覆盖真实 tool-call、重复 JSON、prompt injection 和错误恢复，因此不构成 P0-5 最终放行。
+
 ## OpenCode 复试成功
 
 Paseo 当前会话刷新后，OpenCode `agent run` 成功创建并完成 Agent。真实日志显示：OpenCode 以 `default` mode、`deepseek/deepseek-v4-flash` 运行，返回中文 prose + fenced JSON，且 `Capabilities` 包含 streaming、persistence、dynamic modes 和 MCP servers。该样本已满足第三 Provider fixture 的来源要求，但仍需多轮成功/失败/注入样本后才能计算稳定性 Gate 指标。
 
 ## 继续条件
 
-下一步需对 Codex、Pi、OpenCode 分别采集多轮 prose、tool-call、JSON、错误、重复候选和 prompt-injection fixture，再计算成功率与拒绝率；Claude/Copilot 暂不纳入，因为当前不可用。
+下一步需补充 Codex 慢响应的可重复性测试，以及真实 tool-call、错误、重复候选和 prompt-injection fixture，并将原始输出通过测试 harness 自动喂给 `normalizeOpinion` 计算成功率与拒绝率；Claude/Copilot 暂不纳入，因为当前不可用。
 
 在稳定性指标完成前，三贤人真实横向评估不得宣称完成。
