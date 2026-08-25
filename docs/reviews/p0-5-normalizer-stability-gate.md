@@ -11,6 +11,7 @@
 | Codex | `Ready`, `codex-cli 0.144.5`, 6 models | P0-4 real prose/tool-call sample available |
 | Pi | `Ready`, version `0.83.0`, 9 models | Real prose + fenced JSON sample available |
 | OpenCode | Agent creation succeeded; `deepseek/deepseek-v4-flash`; streaming/persistence/dynamic modes available | Real Chinese prose + fenced JSON sample available |
+| Hermes | ACP spawn/initialize/session/new successful; version `0.20.5`; 20 models | Real prose + fenced JSON sample available |
 | Claude | `Unavailable`, binary not found | No real sample |
 | Copilot | `Unavailable`, binary not found | No real ACP sample |
 
@@ -20,13 +21,13 @@ Paseo Provider 列表没有 Hermes，本机 PATH 没有 `hermes` 命令，用户
 
 另外，直接调用全局 `opencode-ai` 包内入口只启动了长驻 OpenCode 进程，没有返回可用版本/Provider handshake；本次试探产生的明确进程已清理，未接入 Paseo，也未取得真实 fixture。
 
-## 当前 Hermes 状态
+## Hermes ACP 试跑
 
-Hermes 已确认安装为 `0.20.5`，入口为 `hermes.exe`/`hermes-acp.exe`；但 `paseo provider diagnostic hermes` 仍返回 `Provider hermes is not configured`，直接安全模式试跑返回 `HTTP 401: Missing Authentication header`。Hermes 目前不能作为 Paseo fixture 来源，也没有修改或记录用户凭据。
+Hermes 已配置到 Paseo，diagnostic 显示 ACP spawn、initialize、session/new 均成功，版本为 `0.20.5`。使用 `deepseek:deepseek-v4-flash` 在专用 workspace 运行受限样本成功，真实日志为 prose + fenced JSON，Agent completion、streaming、persistence 和 dynamic modes 均可用。样本仍是 untrusted observation，不含 policy-grade evidence。
 
 ## 判定
 
-Provider fixture 集合已达到 Codex、Pi、OpenCode 三个真实来源；Normalizer 对 inline JSON 和 fenced JSON 两种容器形态均可做严格 schema 提取。P0-5 的“来源可用”子项通过，但稳定性指标仍未完成，不能宣称完整 Gate 通过。
+Provider fixture 集合已达到 Codex、Pi、OpenCode、Hermes 四个真实来源；Normalizer 对 inline JSON 和 fenced JSON 两种容器形态均可做严格 schema 提取。P0-5 的“来源可用”子项通过，但稳定性指标仍未完成，不能宣称完整 Gate 通过。
 
 ## OpenCode 复试成功
 
