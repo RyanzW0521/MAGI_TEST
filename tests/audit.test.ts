@@ -25,4 +25,10 @@ describe("M6 audit and decision snapshots", () => {
     const record = createDecisionSnapshotRecord("snapshot-1", snapshot, { type: "CONTINUE", nextState: "EXECUTING", reason: "approved" }, "magi-v0.1", "2026-08-25T00:00:00.000Z");
     expect(record).toMatchObject({ taskId: "task-1", state: "DECIDING", policyVersion: "magi-v0.1", output: { type: "CONTINUE", nextState: "EXECUTING" } });
   });
+
+  it("redacts secret-like audit fields before storage", async () => {
+    const store = new InMemoryAuditStore();
+    await store.append({ id: "secret-event", taskId: "task-1", timestamp: "2026-08-25T00:00:00.000Z", state: "DECIDING", actor: "RUNTIME", type: "TEST", payload: { apiKey: "sk-live-secret", nested: { password: "hidden" }, normal: "ok" } });
+    await expect(store.list("task-1")).resolves.toContainEqual(expect.objectContaining({ payload: { apiKey: "[REDACTED]", nested: { password: "[REDACTED]" }, normal: "ok" } }));
+  });
 });

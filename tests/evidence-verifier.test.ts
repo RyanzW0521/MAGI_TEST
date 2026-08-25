@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { EvidenceVerifier, InMemoryArtifactStore } from "../src/evidence/index.js";
 
 const createdAt = "2026-08-25T00:00:00.000Z";
-const artifactBase = { taskId: "task-1", runId: "run-1", metadata: {}, createdAt };
+const artifactBase = { taskId: "task-1", runId: "run-1", metadata: {}, createdAt, provenance: { source: "RUNTIME" as const, collector: "RUNTIME" as const, registeredAt: createdAt } };
 
 describe("M4 EvidenceVerifier", () => {
   it("registers and retrieves artifacts", async () => {

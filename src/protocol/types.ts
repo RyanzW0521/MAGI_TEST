@@ -21,9 +21,11 @@ export interface TaskPacket {
 
 export type ArtifactType = "COMMAND_RESULT" | "TEST_RESULT" | "FILE" | "GIT_DIFF" | "LOG" | "TRACE" | "BENCHMARK" | "HISTORY_RECORD" | "RISK_POLICY";
 export interface ArtifactRef { artifactId: string; }
+export type ArtifactProvenanceSource = "RUNTIME" | "MELCHIOR" | "BALTHASAR" | "CASPER" | "EXECUTOR";
+export interface ArtifactProvenance { source: ArtifactProvenanceSource; collector: "RUNTIME"; registeredAt: string; sourceRef?: string; }
 export interface Artifact {
   id: string; taskId: string; runId?: string; type: ArtifactType; path?: string; hash?: string;
-  metadata: Record<string, unknown>; createdAt: string;
+  metadata: Record<string, unknown>; createdAt: string; provenance: ArtifactProvenance;
 }
 
 export interface ArchitectureContext { kind: "ARCHITECTURE"; architectureDocs?: ArtifactRef[]; sourceSnapshot?: ArtifactRef[]; dependencyMetadata?: ArtifactRef[]; apiMetadata?: ArtifactRef[]; currentDiff?: ArtifactRef[]; }
