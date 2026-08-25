@@ -39,7 +39,7 @@ export class MagiRuntime {
   }
 
   async createTask(task: TaskPacket): Promise<TaskRecord> {
-    const record = await this.taskStore.create({ task, state: "RECEIVED", repairAttempts: 0 });
+    const record = await this.taskStore.create({ task, state: "RECEIVED", repairAttempts: 0, stateVersion: 0 });
     await this.audit(task.taskId, "RECEIVED", "TASK_CREATED", { task });
     return record;
   }
