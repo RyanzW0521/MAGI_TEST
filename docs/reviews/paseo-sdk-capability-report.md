@@ -2,7 +2,7 @@
 
 日期：2026-08-25  
 分支：`v0.2-p`  
-状态：`P0-1 PARTIAL PASS / GATE-2 PENDING`
+状态：`P0-1 PASS / GATE-2 PENDING`
 
 ## 目的
 
@@ -45,10 +45,31 @@
 - ACP、MCP、native tool 或其他 orchestration 绕行路径；
 - 关闭能力是否能阻断绕行，以及 MAGI 是否能观察到完整调用链。
 
-## Gate 判定
+## P0-1 验证矩阵
 
-当前只通过“安装与基础能力可达”部分，不能作为 P0-1 完整通过。P0-2 仍不得冻结 Backend 接口，直到取得真实 Agent 生命周期、session/streaming、cancel/shutdown 和 ACP/MCP/native 绕行排查证据。下一步可在专用隔离 workspace 中创建最小 Codex 探针 Agent，并记录原始 tool-call/事件样本；该动作需要单独纳入 Spike，不得把 Agent 自报结果当作证明。
+| 能力 | 证据 | 判定 |
+|---|---|---|
+| Provider discovery | `provider ls --json` 返回 Codex、Claude、Copilot、OpenCode、Pi | PASS |
+| Provider diagnostic | Codex `Ready`，解析 `codex-cli 0.144.5`，Models=6 | PASS |
+| Agent creation | 专用 local workspace 创建 Codex Agent 成功 | PASS |
+| Session persistence | 完成后 `agent send` 可继续处理，日志保留两轮消息/输出 | PASS |
+| Streaming | `Capabilities.Streaming=true`，`agent attach` 收到实时会话内容 | PASS |
+| Completion lifecycle | `running -> idle`，`agent inspect` 返回 final capabilities 与 usage | PASS |
+| Stop/cancel | `agent stop` 返回 `stoppedCount: 1`，探针回到 idle、无 pending permission | PASS |
+| Daemon shutdown | `daemon stop` 返回 `Daemon stopped gracefully`，状态变 stopped | PASS |
+| Daemon restart | `--foreground --no-relay` 成功恢复，重新监听 `127.0.0.1:6767` | PASS |
+| Loopback boundary | health 200；TCP listener 仅为 `127.0.0.1:6767` | PASS |
+
+P0-1 通过。P0-2 仍只允许基于本报告和后续真实输出样本定稿，不能把 Paseo 的 Agent observation 当成 MAGI proof。
+
+## GATE-2 预审结论
+
+已确认的编排入口包括：CLI agent/workspace/provider 控制面、daemon Agent MCP endpoint `/mcp/agents`、Codex provider native command `codex`，以及 Copilot provider 的 ACP mode 标识。daemon 启动开关提供 `--no-mcp` 与 `--no-inject-mcp`，但本次没有对真实 Agent 执行 MCP/ACP/native 绕行攻击，也没有验证禁用开关能否阻断所有旁路。因此 GATE-2 仍为 `PENDING`，必须另出 ACP/MCP/native 路径排查报告。
+
+## 运行环境副作用
+
+Paseo daemon 启动时会在其用户目录尝试后台下载缺失的本地语音模型；这不属于 MAGI Runtime 的验证动作。P0-1 探针本身禁止 shell、网络、文件修改和凭据访问；后续测试仍需在交付文档中明确 Paseo daemon 的外部副作用边界。
 
 ## 风险与边界
 
-这不是 Paseo 不具备能力的结论，只表示当前工作区没有可验证的运行时证据。即使 SDK 可用，后续交付也必须显式保留三项残余风险：ControlledExecutor 不是完整 sandbox；验证仍可能执行不可信测试代码；Paseo daemon 被攻破时不提供抵抗能力。
+即使 P0-1 通过，后续交付也必须显式保留三项残余风险：ControlledExecutor 不是完整 sandbox；验证仍可能执行不可信测试代码；Paseo daemon 被攻破时不提供抵抗能力。
