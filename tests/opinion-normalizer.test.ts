@@ -18,6 +18,11 @@ describe("P0-4 OpinionNormalizer spike", () => {
     expect(result).toEqual({ status: "NORMALIZED", opinion });
   });
 
+  it("extracts one strict opinion from a fenced JSON block", () => {
+    const result = normalizeOpinion(["Provider prose.", "```json", JSON.stringify({ ...opinion, role: "CASPER" }), "```"].join("\\n"));
+    expect(result).toMatchObject({ status: "NORMALIZED", opinion: { role: "CASPER" } });
+  });
+
   it("rejects a real prose/tool-call sample without an AgentOpinion", () => {
     const result = normalizeOpinion("I inspected the workspace with one read-only tool call. {\"summary\":\"empty\",\"files\":[]}");
     expect(result.status).toBe("REJECTED");
