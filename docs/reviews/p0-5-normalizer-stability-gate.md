@@ -43,6 +43,10 @@ Provider fixture 集合已达到 Codex、Pi、OpenCode、Hermes 四个真实来�
 
 本轮稳定性结论是“格式行为部分通过”：Pi、Hermes 三轮均完成并通过；OpenCode 的一次错误类型被严格拒绝，说明 schema 边界生效；Codex 第三轮在等待窗口内没有产生 assistant 输出，记录为超时/无输出。该测试没有验证 claims/evidence 的真实性，也没有覆盖真实 tool-call、重复 JSON、prompt injection 和错误恢复，因此不构成 P0-5 最终放行。
 
+## 本地 Normalizer 回归 harness
+
+补充 `tests/opinion-normalizer-provider-fixtures.test.ts`，将本轮观察到的形态固化为 5 类回归向量：tool-call 前缀后跟严格意见、Provider 错误文本、重复意见候选、带注入文本的意见，以及 `risks` 类型漂移。结果为 `npm run build` 通过、16 个测试文件共 75 个测试通过。该 harness 验证的是提取与 schema 边界，不宣称注入防御或意见语义验证已经完成。
+
 ## OpenCode 复试成功
 
 Paseo 当前会话刷新后，OpenCode `agent run` 成功创建并完成 Agent。真实日志显示：OpenCode 以 `default` mode、`deepseek/deepseek-v4-flash` 运行，返回中文 prose + fenced JSON，且 `Capabilities` 包含 streaming、persistence、dynamic modes 和 MCP servers。该样本已满足第三 Provider fixture 的来源要求，但仍需多轮成功/失败/注入样本后才能计算稳定性 Gate 指标。
