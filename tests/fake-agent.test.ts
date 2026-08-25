@@ -27,12 +27,19 @@ describe("M5 FakeAgentAdapter", () => {
     expect(adapter.getCallCount("MELCHIOR")).toBe(2);
   });
 
+  it("repairs a schema-valid but semantically invalid opinion", async () => {
+    const invalidRole = { ...opinion(), role: "CASPER" as const };
+    const adapter = new FakeAgentAdapter([{ role: "MELCHIOR", results: [invalidRole, opinion()] }]);
+    await expect(runOpinion(adapter, request)).resolves.toMatchObject({ status: "SUCCESS", repairAttempts: 1, infraAttempts: 2, output: opinion() });
+  });
+
   it("retries infrastructure failure but not a REJECT decision", async () => {
     const timeoutAdapter = new FakeAgentAdapter([{ role: "MELCHIOR", results: ["TIMEOUT", opinion()] }]);
     await expect(runOpinion(timeoutAdapter, request)).resolves.toMatchObject({ status: "SUCCESS", infraAttempts: 2 });
 
-    const rejectAdapter = new FakeAgentAdapter([{ role: "MELCHIOR", results: [opinion("REJECT")] }]);
-    await expect(runOpinion(rejectAdapter, request)).resolves.toMatchObject({ status: "SUCCESS", infraAttempts: 1, repairAttempts: 0, output: opinion("REJECT") });
+    const rejectedOpinion = { ...opinion("REJECT"), blockingIssues: ["test failure"] };
+    const rejectAdapter = new FakeAgentAdapter([{ role: "MELCHIOR", results: [rejectedOpinion] }]);
+    await expect(runOpinion(rejectAdapter, request)).resolves.toMatchObject({ status: "SUCCESS", infraAttempts: 1, repairAttempts: 0, output: rejectedOpinion });
     expect(rejectAdapter.getCallCount("MELCHIOR")).toBe(1);
   });
 

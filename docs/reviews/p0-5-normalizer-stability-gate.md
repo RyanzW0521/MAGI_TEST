@@ -47,6 +47,12 @@ Provider fixture 集合已达到 Codex、Pi、OpenCode、Hermes 四个真实来�
 
 补充 `tests/opinion-normalizer-provider-fixtures.test.ts`，将本轮观察到的形态固化为 5 类回归向量：tool-call 前缀后跟严格意见、Provider 错误文本、重复意见候选、带注入文本的意见，以及 `risks` 类型漂移。结果为 `npm run build` 通过、16 个测试文件共 75 个测试通过。该 harness 验证的是提取与 schema 边界，不宣称注入防御或意见语义验证已经完成。
 
+## 语义验证（2026-08-25）
+
+新增 `validateOpinionSemantics` 并接入 `runOpinion`。硬拒绝规则包括：角色与请求不一致、`APPROVE` 同时携带 blocking issue、无理由 `REJECT`、VETO 证据未出现在意见证据集、重复 evidence 引用。claims 没有 evidence 只产生 warning，因为真实性和 artifact 内容必须由 EvidenceVerifier 验证，不能由 FakeAgent 自证。
+
+四个 Provider 的可归一化样本均通过上述基础语义边界；OpenCode 的一次 `risks` 字符串漂移在 schema 阶段已被拒绝。新增语义校验与 runner repair 测试后，`npm run build` 通过、17 个测试文件共 82 个测试通过。结论仍是“语义边界通过、语义真实性未验证”：尚未把 Provider 的 claims/evidence 当作事实，也未完成真实 artifact 绑定的端到端验证。
+
 ## OpenCode 复试成功
 
 Paseo 当前会话刷新后，OpenCode `agent run` 成功创建并完成 Agent。真实日志显示：OpenCode 以 `default` mode、`deepseek/deepseek-v4-flash` 运行，返回中文 prose + fenced JSON，且 `Capabilities` 包含 streaming、persistence、dynamic modes 和 MCP servers。该样本已满足第三 Provider fixture 的来源要求，但仍需多轮成功/失败/注入样本后才能计算稳定性 Gate 指标。

@@ -2,6 +2,7 @@ import { AgentOpinionSchema } from "../protocol/schemas.js";
 import type { AgentRunStatus, AgentOpinion, SageRequest } from "../protocol/types.js";
 import type { AgentAdapter } from "./agent-adapter.js";
 import { FakeAgentError } from "./fake-agent-adapter.js";
+import { validateOpinionSemantics } from "./opinion-semantic-validator.js";
 
 export interface OpinionRunnerOptions {
   maxInfraAttempts?: number;
@@ -45,7 +46,15 @@ export async function runOpinion(
 
     if (!completed) return { status: "FAILED", infraAttempts, repairAttempts, error: "adapter did not complete" };
     const parsed = AgentOpinionSchema.safeParse(raw!);
-    if (parsed.success) return { status: "SUCCESS", output: parsed.data, infraAttempts, repairAttempts };
+    if (parsed.success) {
+      const semantic = validateOpinionSemantics(parsed.data, input.role);
+      if (semantic.status === "ACCEPTED") return { status: "SUCCESS", output: parsed.data, infraAttempts, repairAttempts };
+      if (repairAttempts >= maxOpinionRepair) {
+        return { status: "INVALID_OUTPUT", infraAttempts, repairAttempts, error: semantic.errors.map((finding) => `${finding.code}: ${finding.message}`).join("; ") };
+      }
+      repairAttempts += 1;
+      continue;
+    }
 
     if (repairAttempts >= maxOpinionRepair) {
       return { status: "INVALID_OUTPUT", infraAttempts, repairAttempts, error: parsed.error.message };

@@ -3,3 +3,4 @@ export * from "./fake-agent-adapter.js";
 export * from "./opinion-runner.js";
 export * from "./runtime-backend.js";
 export * from "./opinion-normalizer.js";
+export * from "./opinion-semantic-validator.js";
