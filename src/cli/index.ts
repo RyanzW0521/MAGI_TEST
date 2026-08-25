@@ -26,6 +26,8 @@ async function run(scenario: string): Promise<void> {
     CASPER: new FakeAgentAdapter([{ role: "CASPER", results: [opinion("CASPER")] }]),
   };
   const artifactStore = new InMemoryArtifactStore();
+  const auditStore = new InMemoryAuditStore();
+  const humanGate = new HumanGate(new InMemoryApprovalStore());
   if (scenario === "veto") await artifactStore.register({ id: `${taskId}-test`, taskId, runId: `${taskId}-balthasar`, type: "TEST_RESULT", metadata: { suite: "mandatory", exitCode: 1, passed: false }, createdAt: task.createdAt, provenance: { source: "RUNTIME", collector: "RUNTIME", registeredAt: task.createdAt } });
   const runtime = new MagiRuntime({
     agents,
@@ -33,15 +35,25 @@ async function run(scenario: string): Promise<void> {
     artifactStore,
     evidenceVerifier: new EvidenceVerifier(artifactStore),
     policyEngine: new PolicyEngine(),
-    humanGate: new HumanGate(new InMemoryApprovalStore()),
+    humanGate,
     executionAdapter: new FakeExecutionAdapter([{ status: "SUCCESS" }]),
     postValidator: new FakePostValidator(scenario === "repair" ? [{ architecture: false, empirical: true, risk: true, issues: ["repeated validation failure"], passed: false }] : [{ architecture: true, empirical: true, risk: true, issues: [], passed: true }]),
-    auditStore: new InMemoryAuditStore(),
+    auditStore,
   });
   await runtime.createTask(task);
+  if (manual) console.log("\n=== MAGI v0.1 人工验收：L3 高风险任务 ===");
+  if (manual) console.log("[1] Task 已创建，Runtime 将执行三角色独立评估。\n");
   let record = await runtime.startTask(taskId);
   console.log(`start: ${record.state}`);
   if ((scenario === "l3" || manual) && record.state === "HUMAN_WAIT" && record.approvalId) {
+    if (manual) {
+      const approval = await humanGate.get(record.approvalId);
+      console.log("\n[2] PolicyEngine 判定：L3 必须人工审批");
+      console.log(`[3] HUMAN_WAIT: approvalId=${record.approvalId}`);
+      console.log(`    reason=${approval?.reason}`);
+      console.log(`    decisionSnapshotId=${approval?.decisionSnapshotId}`);
+      console.log("\n[4] 现在由验收人员输入人工决定。\n");
+    }
     if (manual) {
       const readline = createInterface({ input, output });
       const answer = (await readline.question("输入 approve 或 reject: ")).trim().toLowerCase();
@@ -54,6 +66,12 @@ async function run(scenario: string): Promise<void> {
       record = await runtime.approveTask(record.approvalId, "demo-human");
       console.log(`approved: ${record.state}`);
     }
+  }
+  if (manual) {
+    console.log("\n[5] Runtime 已完成人工决定后的恢复流程");
+    console.log("    → EXECUTING → VALIDATING → 最终状态");
+    console.log("\n[6] Audit Trace:");
+    for (const event of await auditStore.list(taskId)) console.log(`    ${event.type.padEnd(20)} state=${event.state}`);
   }
   console.log(`final: ${record.state}`);
 }

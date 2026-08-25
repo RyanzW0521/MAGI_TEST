@@ -57,11 +57,13 @@ export class MagiRuntime {
     await Promise.all(roles.map(async (role) => {
       const adapter = this.config.agents[role];
       const context = this.config.contexts[role];
+      await this.audit(taskId, record.state, "AGENT_STARTED", { role, contextKind: context?.kind ?? "MISSING" });
       if (!adapter || !context) { agentStatuses[role] = "FAILED"; return; }
       const request: SageRequest = { runId: `${taskId}-${role.toLowerCase()}`, role, task: record.task, context };
       const result = await runOpinion(adapter, request);
       agentStatuses[role] = result.status;
       if (result.output) opinions[role] = result.output;
+      await this.audit(taskId, record.state, result.status === "SUCCESS" ? "AGENT_SUCCEEDED" : "AGENT_FAILED", { role, status: result.status });
     }));
 
     record = await this.move(record, "DECIDING", "STATE_TRANSITION");
@@ -83,7 +85,8 @@ export class MagiRuntime {
     if (decision.type === "HUMAN_REQUIRED") {
       const approvalId = `${taskId}-approval-1`;
       await this.config.humanGate.requestApproval(approvalId, taskId, decision.reason, snapshot, snapshotRecord.id, this.now());
-      record = { ...(await this.move(record, "HUMAN_WAIT", "HUMAN_REQUESTED", { approvalStatus: "PENDING" })), approvalId };
+      await this.audit(taskId, record.state, "HUMAN_REQUESTED", { approvalId, reason: decision.reason }, snapshotRecord.id);
+      record = { ...(await this.move(record, "HUMAN_WAIT", "STATE_TRANSITION", { approvalStatus: "PENDING" })), approvalId };
       return this.taskStore.update(record);
     }
 
@@ -99,7 +102,8 @@ export class MagiRuntime {
     const snapshot = this.snapshotsById.get(approval.decisionSnapshotId);
     if (!snapshot) throw new Error("decision snapshot not found");
     await this.config.humanGate.approve(approvalId, approverId, snapshot, this.now());
-    record = await this.move(record, "EXECUTING", "HUMAN_APPROVED", { approvalStatus: "APPROVED", executionPermissionGranted: true });
+    await this.audit(taskId, record.state, "HUMAN_APPROVED", { approvalId, approverId }, approval.decisionSnapshotId);
+    record = await this.move(record, "EXECUTING", "STATE_TRANSITION", { approvalStatus: "APPROVED", executionPermissionGranted: true });
     return this.execute(record);
   }
 
@@ -111,7 +115,8 @@ export class MagiRuntime {
     const snapshot = this.snapshotsById.get(approval.decisionSnapshotId);
     if (!snapshot) throw new Error("decision snapshot not found");
     await this.config.humanGate.reject(approvalId, approverId, snapshot, this.now());
-    return this.move(record, "REJECTED", "HUMAN_REJECTED", { approvalStatus: "REJECTED" });
+    await this.audit(taskId, record.state, "HUMAN_REJECTED", { approvalId, approverId }, approval.decisionSnapshotId);
+    return this.move(record, "REJECTED", "STATE_TRANSITION", { approvalStatus: "REJECTED" });
   }
 
   async cancelTask(taskId: string): Promise<TaskRecord> {
