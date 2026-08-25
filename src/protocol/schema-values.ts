@@ -1,0 +1,11 @@
+export const TASK_STATES = ["RECEIVED", "EVALUATING", "DECIDING", "HUMAN_WAIT", "EXECUTING", "VALIDATING", "REPAIRING", "COMPLETED", "REJECTED", "FAILED", "CANCELLED"] as const;
+export const RISK_LEVELS = ["L1", "L2", "L3"] as const;
+export const TASK_TYPES = ["documentation", "bugfix", "implementation", "architecture", "performance", "deployment", "security", "other"] as const;
+export const SAGE_ROLES = ["MELCHIOR", "BALTHASAR", "CASPER"] as const;
+export const ARTIFACT_TYPES = ["COMMAND_RESULT", "TEST_RESULT", "FILE", "GIT_DIFF", "LOG", "TRACE", "BENCHMARK", "HISTORY_RECORD", "RISK_POLICY"] as const;
+export const RECOMMENDATIONS = ["APPROVE", "REJECT", "REVISE", "ABSTAIN"] as const;
+export const VETO_CATEGORIES = ["MANDATORY_TEST_FAILURE", "ARCHITECTURAL_INVARIANT", "KNOWN_CRITICAL_INCIDENT", "SECURITY_POLICY", "DESTRUCTIVE_OPERATION"] as const;
+export const AGENT_RUN_STATUSES = ["PENDING", "RUNNING", "SUCCESS", "FAILED", "TIMEOUT", "INVALID_OUTPUT", "CANCELLED"] as const;
+export const EVIDENCE_STATUSES = ["VERIFIED", "UNVERIFIED", "INVALID"] as const;
+export const HUMAN_WAIT_REASONS = ["HIGH_RISK", "AGENT_MISSING", "HARD_CONFLICT", "REPAIR_EXHAUSTED", "UNVERIFIED_CRITICAL_EVIDENCE", "POLICY_REQUIRED"] as const;
+export const APPROVAL_STATUSES = ["PENDING", "APPROVED", "REJECTED", "CANCELLED"] as const;
