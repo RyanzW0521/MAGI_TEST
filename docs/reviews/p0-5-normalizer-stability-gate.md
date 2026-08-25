@@ -20,6 +20,16 @@ Paseo Provider 列表没有 Hermes，本机 PATH 没有 `hermes` 命令，用户
 
 另外，直接调用全局 `opencode-ai` 包内入口只启动了长驻 OpenCode 进程，没有返回可用版本/Provider handshake；本次试探产生的明确进程已清理，未接入 Paseo，也未取得真实 fixture。
 
+## 最新复查与试跑
+
+后续复查发现环境已有真实 Hermes：`0.20.5`，入口为 `hermes.exe`/`hermes-acp.exe`；OpenCode CLI 也已出现，Paseo diagnostic 显示 OpenCode `Ready`、版本 `1.18.23`。但实际试跑暴露了两层状态不一致：
+
+- `paseo agent run --provider opencode` 仍返回 `Provider 'opencode' is not available`；
+- Hermes 安全模式 CLI 返回 `HTTP 401: Missing Authentication header`；
+- `paseo provider diagnostic hermes` 返回 `Provider hermes is not configured`。
+
+因此本次没有取得新的 OpenCode/Hermes fixture，也没有修改用户配置或接触凭据。P0-5 仍不能通过；后续需要先完成 Provider 注册/认证与 Paseo agent creation 的一致性修复，再重跑样本。
+
 ## 判定
 
 P0-5 仍不通过，但已从完全阻塞推进到部分通过。当前已有 Codex 与 Pi 两种真实输出形态：Codex prose + inline JSON/tool-call 样本，Pi prose + fenced JSON 样本。Normalizer 对这两种容器形态均可做严格 schema 提取；内容仍是 untrusted observation。
