@@ -2,7 +2,7 @@
 
 日期：2026-08-25  
 分支：`v0.2-p`  
-状态：`SPIKE BLOCKED / NO-GO`
+状态：`P0-1 PARTIAL PASS / GATE-2 PENDING`
 
 ## 目的
 
@@ -21,6 +21,19 @@
 
 本次没有启动未知进程，也没有执行真实 shell/network；所以没有把不存在的能力当作 Spike 证据。
 
+## 已取得的运行时证据
+
+用户提供安装位置后，确认真实 bundled CLI：`D:\\w00896470\\00-softwares\\05-paseo\\resources\\bin\\paseo.cmd`，Paseo CLI/daemon 版本均为 `0.4.0`。
+
+只读启动和诊断结果：
+
+- daemon 已在 `127.0.0.1:6767` 监听，状态为 `running/reachable`；relay disabled。
+- Codex Provider 状态为 `Ready`，解析到 `codex-cli 0.144.5`，发现 6 个模型。
+- Codex 支持 `low/medium/high/xhigh/max/ultra` 等 thinking 选项（具体模型有所不同）。
+- daemon 启动日志确认挂载 Agent MCP endpoint `/mcp/agents`。
+- CLI 暴露 agent、workspace、provider、terminal、script、schedule、heartbeat 等控制面。
+- 本次只读探测未创建 Agent；已有一个用户历史 Agent 和一个 local Workspace，均不属于本 Spike。
+
 ## 未取得的证据
 
 以下能力均为 `UNKNOWN`，不能据此设计稳定 Backend contract：
@@ -34,9 +47,8 @@
 
 ## Gate 判定
 
-P0-1 暂不通过，P0-2 不得开始冻结 Backend 接口。P0-1 的恢复条件是提供可执行的 Paseo SDK/daemon、版本或 commit、最小启动方式和允许的本地测试范围。恢复后应重新运行 Spike，保存真实 API/事件样本，并用这些样本补齐 GATE-2 排查报告。
+当前只通过“安装与基础能力可达”部分，不能作为 P0-1 完整通过。P0-2 仍不得冻结 Backend 接口，直到取得真实 Agent 生命周期、session/streaming、cancel/shutdown 和 ACP/MCP/native 绕行排查证据。下一步可在专用隔离 workspace 中创建最小 Codex 探针 Agent，并记录原始 tool-call/事件样本；该动作需要单独纳入 Spike，不得把 Agent 自报结果当作证明。
 
 ## 风险与边界
 
 这不是 Paseo 不具备能力的结论，只表示当前工作区没有可验证的运行时证据。即使 SDK 可用，后续交付也必须显式保留三项残余风险：ControlledExecutor 不是完整 sandbox；验证仍可能执行不可信测试代码；Paseo daemon 被攻破时不提供抵抗能力。
-
