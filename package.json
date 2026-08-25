@@ -7,7 +7,7 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "demo": "npm run build && node dist/src/cli/index.js run l3"
+    "demo": "npm run build && node dist/src/cli/index.js run all"
   },
   "bin": {
     "magi": "dist/src/cli/index.js"

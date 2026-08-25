@@ -1,0 +1,12 @@
+version: magi-v0.1
+runtime:
+  agentTimeoutMs: 30000
+  infraRetryMax: 2
+  opinionRepairMax: 1
+  repairMax: 2
+evidence:
+  requireVerifiedForVeto: true
+safety:
+  allowRealShell: false
+  allowNetwork: false
+  storeSecretsInAudit: false
