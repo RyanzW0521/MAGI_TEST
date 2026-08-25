@@ -25,7 +25,10 @@ export function sanitizeAuditPayload(value: unknown): unknown {
   if (value && typeof value === "object") {
     return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, SECRET_KEY.test(key) ? "[REDACTED]" : sanitizeAuditPayload(item)]));
   }
-  if (typeof value === "string" && /^(bearer\s+|sk-|ghp_)/i.test(value)) return "[REDACTED]";
+  if (typeof value === "string") {
+    if (/^(bearer\s+|sk-|ghp_)/i.test(value)) return "[REDACTED]";
+    return value.replace(/((?:api[_-]?key|password|passwd|token|secret|authorization)\s*[:=]\s*["']?)([^\s,"'}]+)/gi, "$1[REDACTED]");
+  }
   return value;
 }
 

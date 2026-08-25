@@ -62,4 +62,22 @@ describe("M4 EvidenceVerifier", () => {
       await rm(directory, { recursive: true, force: true });
     }
   });
+
+  it("requires provenance at the ArtifactStore boundary", async () => {
+    const store = new InMemoryArtifactStore();
+    await expect(store.register({ ...artifactBase, id: "bad-provenance", type: "FILE", metadata: {}, provenance: undefined as never })).rejects.toThrow();
+  });
+
+  it("requires hash-backed GIT_DIFF evidence", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "magi-diff-"));
+    const filePath = join(directory, "diff.patch");
+    await writeFile(filePath, "diff --git a/a b/a", "utf8");
+    try {
+      const store = new InMemoryArtifactStore();
+      await store.register({ ...artifactBase, id: "diff", type: "GIT_DIFF", path: filePath, metadata: {} });
+      await expect(new EvidenceVerifier(store).verify({ artifactId: "diff", claim: "diff" }, "task-1")).resolves.toMatchObject({ status: "INVALID" });
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
 });

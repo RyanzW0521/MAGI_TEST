@@ -5,8 +5,8 @@ import { runOpinion } from "../agents/index.js";
 import type { ArtifactStore, EvidenceVerifier } from "../evidence/index.js";
 import type { HumanGate } from "../human/index.js";
 import type { PolicyEngine } from "../policy/index.js";
-import type { AgentOpinion, AgentRunStatus, DecisionSnapshot, RoleContext, SageRequest, SageRole, TaskPacket, TaskState } from "../protocol/index.js";
-import { executeWithRepair, type ExecutionAdapter, type PostValidator } from "../execution/index.js";
+import type { AgentOpinion, AgentRunStatus, DecisionSnapshot, DecisionSnapshotRecord, PolicyDecision, RoleContext, SageRequest, SageRole, TaskPacket, TaskState } from "../protocol/index.js";
+import type { ExecutionAdapter, PostValidator } from "../execution/index.js";
 import { StateMachine } from "./state-machine.js";
 import { InMemoryTaskStore, type TaskRecord, type TaskStore } from "./task-store.js";
 
@@ -29,6 +29,8 @@ export class MagiRuntime {
   private readonly stateMachine = new StateMachine();
   private readonly now: () => string;
   private readonly snapshots = new Map<string, DecisionSnapshot>();
+  private readonly snapshotsById = new Map<string, DecisionSnapshot>();
+  private readonly snapshotRecords = new Map<string, DecisionSnapshotRecord>();
   private auditSequence = 0;
 
   constructor(private readonly config: RuntimeConfig) {
@@ -43,6 +45,7 @@ export class MagiRuntime {
   }
 
   async getTaskStatus(taskId: string): Promise<TaskRecord | null> { return this.taskStore.get(taskId); }
+  getDecisionSnapshotRecord(id: string): DecisionSnapshotRecord | null { return this.snapshotRecords.get(id) ?? null; }
 
   async startTask(taskId: string): Promise<TaskRecord> {
     let record = await this.requireTask(taskId);
@@ -72,6 +75,8 @@ export class MagiRuntime {
     this.snapshots.set(taskId, snapshot);
     const decision = this.config.policyEngine.decide(snapshot);
     const snapshotRecord = createDecisionSnapshotRecord(`${taskId}-decision-${this.now()}`, snapshot, decision, "magi-v0.1", this.now());
+    this.snapshotRecords.set(snapshotRecord.id, snapshotRecord);
+    this.snapshotsById.set(snapshotRecord.id, snapshot);
     await this.audit(taskId, record.state, "POLICY_DECISION", { decision, inputHash: snapshotRecord.inputHash, outputHash: snapshotRecord.outputHash }, snapshotRecord.id);
 
     if (decision.type === "REJECT") return this.move(record, "REJECTED", "TASK_REJECTED");
@@ -87,9 +92,11 @@ export class MagiRuntime {
   }
 
   async approveTask(approvalId: string, approverId: string): Promise<TaskRecord> {
-    const taskId = approvalId.replace(/-approval-\d+$/, "");
+    const approval = await this.config.humanGate.get(approvalId);
+    if (!approval) throw new Error(`Approval not found: ${approvalId}`);
+    const taskId = approval.taskId;
     let record = await this.requireTask(taskId);
-    const snapshot = this.snapshots.get(taskId);
+    const snapshot = this.snapshotsById.get(approval.decisionSnapshotId);
     if (!snapshot) throw new Error("decision snapshot not found");
     await this.config.humanGate.approve(approvalId, approverId, snapshot, this.now());
     record = await this.move(record, "EXECUTING", "HUMAN_APPROVED", { approvalStatus: "APPROVED", executionPermissionGranted: true });
@@ -97,9 +104,11 @@ export class MagiRuntime {
   }
 
   async rejectTask(approvalId: string, approverId: string): Promise<TaskRecord> {
-    const taskId = approvalId.replace(/-approval-\d+$/, "");
+    const approval = await this.config.humanGate.get(approvalId);
+    if (!approval) throw new Error(`Approval not found: ${approvalId}`);
+    const taskId = approval.taskId;
     const record = await this.requireTask(taskId);
-    const snapshot = this.snapshots.get(taskId);
+    const snapshot = this.snapshotsById.get(approval.decisionSnapshotId);
     if (!snapshot) throw new Error("decision snapshot not found");
     await this.config.humanGate.reject(approvalId, approverId, snapshot, this.now());
     return this.move(record, "REJECTED", "HUMAN_REJECTED", { approvalStatus: "REJECTED" });
@@ -111,19 +120,37 @@ export class MagiRuntime {
   }
 
   private async execute(record: TaskRecord): Promise<TaskRecord> {
-    const result = await executeWithRepair(record.task, this.config.executionAdapter, this.config.postValidator, 2);
-    record.repairAttempts = result.repairAttempts;
-    await this.audit(record.task.taskId, record.state, "EXECUTION_FINISHED", { result });
-    if (result.outcome === "FAILED") return this.move(record, "FAILED", "TASK_FAILED");
-    record = await this.move(record, "VALIDATING", "VALIDATION_STARTED");
-    if (result.outcome === "COMPLETED") return this.move(record, "COMPLETED", "TASK_COMPLETED");
-    const snapshot = this.snapshots.get(record.task.taskId);
-    if (!snapshot) throw new Error("decision snapshot not found");
-    const approvalId = `${record.task.taskId}-repair-approval`;
-    await this.config.humanGate.requestApproval(approvalId, record.task.taskId, "REPAIR_EXHAUSTED", { ...snapshot, currentState: "REPAIRING", repairAttempts: result.repairAttempts }, `${record.task.taskId}-repair`, this.now());
-    record = await this.move(record, "REPAIRING", "REPAIR_STARTED");
-    record = { ...(await this.move(record, "HUMAN_WAIT", "HUMAN_REQUESTED", { approvalStatus: "PENDING" })), approvalId };
-    return this.taskStore.update(record);
+    while (true) {
+      const execution = await this.config.executionAdapter.execute(record.task);
+      await this.audit(record.task.taskId, record.state, "EXECUTION_FINISHED", { execution });
+      if (execution.status !== "SUCCESS") return this.move(record, "FAILED", "TASK_FAILED");
+      record = await this.move(record, "VALIDATING", "VALIDATION_STARTED");
+      const validation = await this.config.postValidator.validate(record.task, execution);
+      await this.audit(record.task.taskId, record.state, validation.passed ? "VALIDATION_PASSED" : "VALIDATION_FAILED", { validation });
+      if (validation.passed) return this.move(record, "COMPLETED", "TASK_COMPLETED");
+
+      const baseSnapshot = this.snapshots.get(record.task.taskId);
+      if (!baseSnapshot) throw new Error("decision snapshot not found");
+      const repairSnapshot: DecisionSnapshot = { ...baseSnapshot, currentState: "REPAIRING", repairAttempts: record.repairAttempts };
+      const repairDecision = this.config.policyEngine.decide(repairSnapshot);
+      const repairRecord = createDecisionSnapshotRecord(`${record.task.taskId}-repair-${record.repairAttempts}`, repairSnapshot, repairDecision, "magi-v0.1", this.now());
+      this.snapshotRecords.set(repairRecord.id, repairRecord);
+      this.snapshotsById.set(repairRecord.id, repairSnapshot);
+      await this.audit(record.task.taskId, record.state, "POLICY_DECISION", { decision: repairDecision, validation }, repairRecord.id);
+
+      if (repairDecision.type === "CONTINUE" && repairDecision.nextState === "EXECUTING") {
+        record = await this.move(record, "REPAIRING", "REPAIR_STARTED");
+        record.repairAttempts += 1;
+        record = await this.move(record, "EXECUTING", "EXECUTION_AUTHORIZED", { executionPermissionGranted: true });
+        continue;
+      }
+
+      const approvalId = `${record.task.taskId}-repair-approval-${record.repairAttempts}`;
+      await this.config.humanGate.requestApproval(approvalId, record.task.taskId, "REPAIR_EXHAUSTED", repairSnapshot, repairRecord.id, this.now());
+      record = await this.move(record, "REPAIRING", "REPAIR_STARTED");
+      record = { ...(await this.move(record, "HUMAN_WAIT", "HUMAN_REQUESTED", { approvalStatus: "PENDING" })), approvalId };
+      return this.taskStore.update(record);
+    }
   }
 
   private async move(record: TaskRecord, next: TaskState, event: string, context = {}): Promise<TaskRecord> {

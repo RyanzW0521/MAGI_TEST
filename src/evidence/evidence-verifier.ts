@@ -16,6 +16,10 @@ export class EvidenceVerifier {
       return this.invalid(reference.artifactId, "artifact does not belong to the expected run");
     }
 
+    if (artifact.type === "GIT_DIFF" && (!artifact.hash || !artifact.path)) {
+      return this.invalid(reference.artifactId, "GIT_DIFF requires a file path and hash");
+    }
+
     if (artifact.hash) {
       if (!artifact.path || !this.artifactStore.verifyHash || !(await this.artifactStore.verifyHash(reference.artifactId))) {
         return this.invalid(reference.artifactId, "artifact hash could not be verified");

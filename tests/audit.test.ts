@@ -28,7 +28,7 @@ describe("M6 audit and decision snapshots", () => {
 
   it("redacts secret-like audit fields before storage", async () => {
     const store = new InMemoryAuditStore();
-    await store.append({ id: "secret-event", taskId: "task-1", timestamp: "2026-08-25T00:00:00.000Z", state: "DECIDING", actor: "RUNTIME", type: "TEST", payload: { apiKey: "sk-live-secret", nested: { password: "hidden" }, normal: "ok" } });
-    await expect(store.list("task-1")).resolves.toContainEqual(expect.objectContaining({ payload: { apiKey: "[REDACTED]", nested: { password: "[REDACTED]" }, normal: "ok" } }));
+    await store.append({ id: "secret-event", taskId: "task-1", timestamp: "2026-08-25T00:00:00.000Z", state: "DECIDING", actor: "RUNTIME", type: "TEST", payload: { apiKey: "sk-live-secret", nested: { password: "hidden" }, embedded: "token=inline-secret", normal: "ok" } });
+    await expect(store.list("task-1")).resolves.toContainEqual(expect.objectContaining({ payload: { apiKey: "[REDACTED]", nested: { password: "[REDACTED]" }, embedded: "token=[REDACTED]", normal: "ok" } }));
   });
 });

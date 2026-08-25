@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import type { Artifact } from "../protocol/types.js";
+import { ArtifactSchema } from "../protocol/schemas.js";
 
 export type ArtifactInput = Omit<Artifact, "id"> & { id?: string };
 
@@ -17,7 +18,7 @@ export class InMemoryArtifactStore implements ArtifactStore {
   async register(input: ArtifactInput): Promise<Artifact> {
     const id = input.id ?? `artifact-${++this.sequence}`;
     if (this.artifacts.has(id)) throw new Error(`Artifact already exists: ${id}`);
-    const artifact: Artifact = { ...input, id };
+    const artifact = ArtifactSchema.parse({ ...input, id }) as Artifact;
     this.artifacts.set(id, artifact);
     return artifact;
   }
