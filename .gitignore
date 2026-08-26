@@ -2,3 +2,5 @@ node_modules/
 dist/
 .npm-cache/
 *.tsbuildinfo
+.paseo-gate2-home/
+.paseo-gate2-workspace/
