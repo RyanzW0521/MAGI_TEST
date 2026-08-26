@@ -6,3 +6,7 @@ dist/
 .paseo-gate2-workspace/
 .paseo-r2-custom-provider-home/
 .paseo-r2-hermes-provider-home/
+.paseo-r2-hermes-acp-probe/
+.paseo-r2-*-override-home/
+.paseo-r2-*-override-workspace/
+.paseo-r2-*-override-probe.log

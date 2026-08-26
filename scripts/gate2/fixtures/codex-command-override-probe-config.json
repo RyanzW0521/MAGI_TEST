@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "daemon": {
+    "listen": "127.0.0.1:6780",
+    "mcp": { "enabled": false, "injectIntoAgents": false },
+    "relay": { "enabled": false }
+  },
+  "agents": {
+    "providers": {
+      "magi-codex-override-probe": {
+        "extends": "codex",
+        "label": "MAGI Codex Override Probe",
+        "command": ["node", "D:/w00896470/02-learning/01-MAGI/scripts/gate2/probes/stdio-capture-command.mjs"],
+        "env": {
+          "MAGI_R2_PROBE_LOG": "D:/w00896470/02-learning/01-MAGI/.paseo-r2-codex-override-probe.log",
+          "MAGI_R2_PROBE_MODE": "exit"
+        },
+        "enabled": true
+      }
+    }
+  }
+}
