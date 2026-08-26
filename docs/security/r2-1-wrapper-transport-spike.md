@@ -16,7 +16,11 @@ Paseo observed version：`0.5.2`
 
 Paseo CLI `agent run --help` 当前只暴露 `--provider`、`--model`、`--mode`、workspace/cwd 等选项，没有 `--provider-command` 或 wrapper command 选项。`provider ls` 显示的是内置 Provider registry，不提供本地 arbitrary command 的证明。
 
-结论：不能把 `Paseo → MagiProviderWrapper → Provider` 作为已确认能力。当前状态是 `UNCONFIRMED`，不是 PASS；下一步需要通过 Paseo provider 配置 schema/source 或受控 custom provider registration 试验继续确认。如果无法实现，按 R2 设计进入 Direct Agent Backend / Hardened Paseo Fork 分叉。
+结论：Paseo 0.5.2 内部确实支持 custom provider registration：`agents.providers.<id>` 可声明 `extends: "acp"`、`label`、`command: [...]`、`env` 和 `disallowedTools`；也支持基于内置 Provider 的 command override。临时 dedicated home 注册 `magi-probe` 后，`provider ls --host 127.0.0.1:6778 --json` 能列出该 Provider，证明 registry/config loading 可行。
+
+进一步使用真实 `hermes-acp.exe` 做了 custom ACP transport 探针。Paseo 能创建 `magi-hermes-probe` registry entry，但 provider snapshot 在 `session/new` 等待 120 秒后超时，随后受限 agent create 返回 `AGENT_CREATE_FAILED / Timeout waiting for message`。因此 custom command 的注册能力已确认，真实 ACP stdio/session transport 尚未通过。
+
+这只确认了“Paseo 能注册并解析 wrapper command”，还没有确认真实 ACP stdio transport 的 argv/stdin/stdout/session/cancel/resume 全链路。后者仍是 R2-1 的 pending 项；本轮不进入任何替代分叉。
 
 ## State API baseline
 
@@ -44,11 +48,12 @@ Paseo CLI `agent run --help` 当前只暴露 `--provider`、`--model`、`--mode`
 
 ## R2-1 判定
 
-- stdio/session/cancel/resume：尚未进入 wrapper transport，因为 custom provider command 尚未确认；不宣称通过。
+- custom provider registration：通过临时 dedicated home registry probe；不影响默认用户配置。
+- stdio/session/cancel/resume：Hermes custom ACP 在 `session/new` 超时；不宣称通过。
 - daemon state baseline：部分通过；agents/workspaces/terminals/schedules/permits/plugins 可读取。
-- custom provider command：未确认，阻止进入正式 R2-2 Sandbox Prototype。
+- custom provider command：已确认可注册/解析；真实 Hermes transport 失败/超时，仍阻止进入正式 R2-2 Sandbox Prototype。
 - GATE-2：保持 `NO-GO`。
 
 ## 下一步
 
-先做不修改用户配置的 provider registration/schema 调查，并补 heartbeat/runtime-object state coverage。只有 custom command 和可靠 postflight state API 同时成立，才进入 Codex wrapper transport 实跑；否则立即形成 NO-GO 分叉报告。
+下一步先分析 Hermes `session/new` 超时的 transport 细节，并补 heartbeat/runtime-object state coverage；随后再用 Codex/OpenCode 的 custom command override 做最小 stdio 探针，验证 argv、stdio、exit、cancel、resume。只有真实 transport 和可靠 postflight state API 同时成立，才进入 Codex Sandbox Prototype；本阶段不进入其它分叉。

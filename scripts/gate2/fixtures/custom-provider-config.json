@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "daemon": {
+    "listen": "127.0.0.1:6778",
+    "mcp": {
+      "enabled": false,
+      "injectIntoAgents": false
+    },
+    "relay": {
+      "enabled": false
+    }
+  },
+  "agents": {
+    "providers": {
+      "magi-probe": {
+        "extends": "acp",
+        "label": "MAGI Probe ACP",
+        "command": ["node", "-e", "process.exit(0)"],
+        "enabled": true
+      }
+    }
+  }
+}

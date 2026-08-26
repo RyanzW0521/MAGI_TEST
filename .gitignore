@@ -4,3 +4,5 @@ dist/
 *.tsbuildinfo
 .paseo-gate2-home/
 .paseo-gate2-workspace/
+.paseo-r2-custom-provider-home/
+.paseo-r2-hermes-provider-home/
